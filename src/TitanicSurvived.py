@@ -1,9 +1,28 @@
 import pandas as pd
 import datetime
+from sklearn import svm
 from sklearn import tree
+import xgboost as xgb
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from src import LogisticRegression as LR
+from sklearn.preprocessing import StandardScaler
+
+from src.Test import LogisticRegression as LR
+
+
+def DataFormate(traindata,testdata):
+    # 数据归约
+    # 1.线性模型需要用标准化的数据建模, 而树类模型不需要标准化的数据
+    # 2.处理标准化的时候, 注意将测试集的数据transform到test集上
+    train_data_X = traindata.drop(['PassengerId','Survived'],axis=1)
+    test_data = testdata.drop(['PassengerId','Survived'], axis=1)
+    ss2 = StandardScaler()
+    ss2.fit(train_data_X)
+    train_data_X_std = ss2.transform(train_data_X)
+    test_data_X_std = ss2.transform(test_data)
+    return train_data_X_std,test_data_X_std
 
 def RandomForest(trainset,testset):
     #class sklearn.ensemble.RandomForestClassifier(
@@ -63,17 +82,19 @@ def LogisticReression(trainset,testset):
     :param testset:
     :return:
     '''
-    lr = LogisticRegression(penalty='l2',solver='liblinear',max_iter=1500)
-    train_data_X = trainset.drop(['PassengerId', 'Survived'], axis=1)
+    train_data_X_std,testdata_std = DataFormate(trainset,testset)
     train_data_Y = trainset['Survived']
-    lr.fit(train_data_X, train_data_Y)
+    lr = LogisticRegression(penalty='l2',solver='liblinear',max_iter=1500)
 
-    testset["Survived"] = lr.predict(testset.drop(['PassengerId', 'Survived'], axis=1))
+    lr.fit(train_data_X_std, train_data_Y)
+
+    testset["Survived"] = lr.predict(testdata_std)
 
     LR = testset[['PassengerId', 'Survived']]
     LR.to_csv('..\\Results\\LR.csv', index=False)
 
 def MyLogisticRegression(trainset,testset):
+
     lr = LR.LogisticRegression(trainset,testset)
     test_Y = lr.logRegression()
     testset["Survived"] = test_Y
@@ -114,7 +135,43 @@ def DecisionTree(trainset,testset):
     CLF = testset[['PassengerId', 'Survived']]
     CLF.to_csv('..\\Results\\CLF.csv', index=False)
 
+def SVM(trainset,testset):
+    param = {'C':[0.001,0.01,0.1,1,10],"max_iter":[100,200,300]}
+    train_data_X_std, testdata_std = DataFormate(trainset, testset)
+    train_data_Y = trainset['Survived']
+    svc = svm.SVC()
+    clf = GridSearchCV(svc,param,cv=5,n_jobs=-1,verbose=1,scoring='roc_auc')
 
+    clf.fit(train_data_X_std,train_data_Y)
+    print(clf.best_params_)
+    svc = svm.SVC(C=1,max_iter=300)
+    #训练模型，并预测结果
+    svc.fit(train_data_X_std,train_data_Y)
+    testset['Survived']=svc.predict(testdata_std)
+    SVM = testset[['PassengerId', 'Survived']]
+    SVM.to_csv('..\\Results\\SVM.csv', index=False)
+
+def GBDT(trainset,testset):
+    gbdt = GradientBoostingClassifier(learning_rate=0.7,max_depth=6,n_estimators=100,min_samples_leaf=3)
+    train_data_X = trainset.drop(['PassengerId', 'Survived'], axis=1)
+    train_data_Y = trainset['Survived']
+    test_data_X = testset.drop(['PassengerId', 'Survived'], axis=1)
+    gbdt.fit(train_data_X,train_data_Y)
+    testset["Survived"] = gbdt.predict(test_data_X)
+
+    GBDT = testset[['PassengerId', 'Survived']]
+    GBDT.to_csv('..\\Results\\GBDT.csv', index=False)
+
+def Xgboost(trainset,testset):
+    xgb_model = xgb.XGBClassifier(n_estimators=150,max_depth=6)
+    train_data_X = trainset.drop(['PassengerId', 'Survived'], axis=1)
+    train_data_Y = trainset['Survived']
+    test_data_X = testset.drop(['PassengerId', 'Survived'], axis=1)
+    xgb_model.fit(train_data_X,train_data_Y)
+    testset["Survived"] = xgb_model.predict(test_data_X)
+
+    XGB = testset[['PassengerId', 'Survived']]
+    XGB.to_csv('..\\Results\\XGB.csv', index=False)
 
 
 if __name__ == '__main__':
@@ -129,5 +186,11 @@ if __name__ == '__main__':
     #自己实现的逻辑回归
     # MyLogisticRegression(trainset, testset)
     #决策树
-    DecisionTree(trainset, testset)
+    # DecisionTree(trainset, testset)
+    #SVM
+    # SVM(trainset,testset)
+    #GBDT
+    # GBDT(trainset, testset)
+    #XGBoost
+    Xgboost(trainset, testset)
     print(datetime.datetime.now().strftime("%Y-%m-%d %H:%S:%M"))

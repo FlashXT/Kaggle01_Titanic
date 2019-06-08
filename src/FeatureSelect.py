@@ -109,7 +109,7 @@ def SibSp():
         malesibspDead = len(malesibSp[malesibSp['Survived'] == 0])
         malesibspSurviveRate = round(malesibspSurvived / len(malesibSp), 2)
         malesibspSurviveRateAll = round(malesibspSurvived / SurviveAll, 2)
-    #
+
         femalesibSp = item[item['Sex'] == 0][['Survived']]
         femalesibspSurvived = len(femalesibSp[femalesibSp['Survived'] == 1])
         femalesibspDead = len(femalesibSp[femalesibSp['Survived'] == 0])
@@ -208,4 +208,4 @@ if __name__ == "__main__":
     Parch()
     Fare()
     Embarked()
-    print(data.columns.values)
+    # print(data.columns.values)
